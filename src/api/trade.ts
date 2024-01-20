@@ -7,12 +7,12 @@ const api = axios.create({
         baseURL: 'http://173.249.49.52:18080',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': process.env.API_AUTH,
+          'Authorization': process.env.NEXT_PUBLIC_API_AUTH,
         }
       });
 
       const data = {
-        token: process.env.API_TOKEN
+        token: process.env.NEXT_PUBLIC_API_TOKEN
       };
 const apiRequest = async (url:string): Promise<any> => {
   try {
