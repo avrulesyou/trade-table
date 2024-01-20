@@ -1,27 +1,11 @@
 "use client"
 import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
-import { tradeData } from '@/api/trade';
 import {Table} from 'antd';
 import { Position } from '@/types/position';
 
-let apiDataFunction = async () => {
-  let apiData : Position[] = await tradeData();
-  let count:number=1;
-  apiData.map(data => {
-    data.key = count;
-    count++;
-    if(data.action == "0"){
-    data.action = "buy"
-  }else{
-    data.action = "sell"
-  }
-  })
-  return apiData;
-}
-interface PositionsProps {
-  positions: Position[];
-}
+
+
 
 const columns: { key: string; dataIndex: string, title: string }[] = [
   { key: 'position_id', dataIndex: 'position_id', title: 'Position ID' },
@@ -39,23 +23,32 @@ const columns: { key: string; dataIndex: string, title: string }[] = [
 
 
 
+const getServerData = async (): Promise<Position[]> => {
+  console.log("Making api call")
+ const response = await fetch('/api/data');
+ const data = await response.json();
 
+ // Now you can use the data
+ console.log(data);
+ return data;
+};
 
 const Positions: React.FC = () => {
-  
+  //console.log(props)
   const [positions, setPositions] = useState<Position[]>([]);
-  const [profit, setProfit] = useState(4.444);
-
+  const [profit, setProfit] = useState(4.44);
   
   
   useEffect(() => {
+   
         const fetchData = async () => {
-          const apiData: Position[] = await apiDataFunction();
+          const serverData: Position[] = await getServerData();
+          console.log("Hi This is API Data " + serverData)
           let sum:number =0;
-          apiData.forEach((data)=> {
+          serverData.forEach((data)=> {
             sum+=data.profit;
           });
-          setPositions(apiData);
+          setPositions(serverData);
           setProfit(sum);
           
           const socket = io('wss://quotes.equidity.io:3000');
@@ -64,7 +57,7 @@ const Positions: React.FC = () => {
           
           socket.on('feeds', (socketData: any) => {
             
-            const positionsToUpdate = apiData.filter((position) => {
+            const positionsToUpdate = serverData.filter((position) => {
               return socketData.some((socketDatum: any) => {
                 return socketDatum.symbol === position.symbol;
               });
@@ -80,10 +73,10 @@ const Positions: React.FC = () => {
               };
     
               
-              const positionIndex = apiData.findIndex((pos) => pos.key === position.key);
+              const positionIndex = serverData.findIndex((pos) => pos.key === position.key);
     
               
-              const newData = [...apiData];
+              const newData = [...serverData];
               newData[positionIndex] = updatedPosition;
               let sum = 0;
               let closePrice = 0;
@@ -131,5 +124,6 @@ const Positions: React.FC = () => {
         </div>
         );
 };
+
 
 export default Positions;
