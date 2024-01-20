@@ -26,6 +26,6 @@ const apiRequest = async (url:string): Promise<any> => {
 }
 
 export const tradeData = async(): Promise<any> => {
-  console.log("Getting Data")
+  console.log("Getting Data"+ process.env.NEXT_PUBLIC_API_TOKEN)
   return apiRequest("/positionget")
 }
