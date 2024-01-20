@@ -3,19 +3,7 @@ import { Position } from '@/types/position';
 import axios from 'axios';
 import { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
 
-const api = axios.create({
-    baseURL: 'http://173.249.49.52:18080',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': process.env.NEXT_PUBLIC_API_AUTH,
-    }
-  });
-
-  const data = {
-    token: process.env.NEXT_PUBLIC_API_TOKEN
-  };
-  //export const apiData= async () => {
-    export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  export default async function handler(req: NextApiRequest, res: NextApiResponse) {
         console.log("Inside Handler")
     
         const api = axios.create({
