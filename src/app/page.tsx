@@ -1,15 +1,24 @@
 "use client"
-import { useState,useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
+import io from 'socket.io-client';
 import { tradeData } from '@/api/trade';
 import {Table} from 'antd';
+import { Position } from '@/types/position';
 
-interface Position {
-  [key: string]: any;
+let apiDataFunction = async () => {
+  let apiData : Position[] = await tradeData();
+  let count:number=1;
+  apiData.map(data => {
+    data.key = count;
+    count++;
+    if(data.action == "0"){
+    data.action = "buy"
+  }else{
+    data.action = "sell"
+  }
+  })
+  return apiData;
 }
-
-console.log(process.env.API_AUTH)
-
 interface PositionsProps {
   positions: Position[];
 }
@@ -28,48 +37,99 @@ const columns: { key: string; dataIndex: string, title: string }[] = [
   { key: 'profit', dataIndex: 'profit', title: 'Profit' },
 ];
 
+
+
+
+
 const Positions: React.FC = () => {
+  
   const [positions, setPositions] = useState<Position[]>([]);
-  const [profit, setProfit] = useState(500);
+  const [profit, setProfit] = useState(4.444);
 
+  
+  
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await tradeData();
-        data.map(dat => {
-          if(dat.action == 0){
-          dat.action = "buy"
-        }else{
-          dat.action = "sell"
-        }
-        })
-        console.log("API Data" + data)
-        setPositions(data);
-          let sum:number = 0
-          data.forEach(element => {
-            if(element.profit)
-            sum = sum + element.profit;
+        const fetchData = async () => {
+          const apiData: Position[] = await apiDataFunction();
+          let sum:number =0;
+          apiData.forEach((data)=> {
+            sum+=data.profit;
           });
+          setPositions(apiData);
           setProfit(sum);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    };
+          
+          const socket = io('wss://quotes.equidity.io:3000');
+          socket.emit('subscribe', 'feeds');
+    
+          
+          socket.on('feeds', (socketData: any) => {
+            
+            const positionsToUpdate = apiData.filter((position) => {
+              return socketData.some((socketDatum: any) => {
+                return socketDatum.symbol === position.symbol;
+              });
+            });
+    
+            
+            positionsToUpdate.forEach((position) => {
+              const updatedPosition = {
+                ...position,
+                price: socketData.find((socketDatum: any) => {
+                  return socketDatum.symbol === position.symbol;
+                }).price,
+              };
+    
+              
+              const positionIndex = apiData.findIndex((pos) => pos.key === position.key);
+    
+              
+              const newData = [...apiData];
+              newData[positionIndex] = updatedPosition;
+              let sum = 0;
+              let closePrice = 0;
+              let openPrice = 0;
+              let profit = 0;
+              let lotSize = 0;
 
-    fetchData();
-  });
-  const formatProfit = (num: number) => {
-     return parseFloat(num.toFixed(2));
-  };
+              positions.forEach((position) => {
+                closePrice = position.close_price;
+                openPrice = position.open_price;
+                lotSize = position.volume;
+                if(position.symbol.endsWith("USD"))
+                profit = ((closePrice-openPrice)*lotSize)*100;
+                else if(position.symbol.endsWith("JPY"))
+                profit = ((closePrice-openPrice)*lotSize)*90;
+                else
+                profit = ((closePrice-openPrice)*lotSize)*80;
 
-  return (
-    <div className='m-3 mx-5'>
-    <Table columns={columns} dataSource={positions} />
-    <div className='mx-auto'>
-      <p>Total Profit : {formatProfit(profit)}</p>
-    </div>
-    </div>
-    );
+                position.profit = profit;
+                sum +=profit;
+              })
+
+              setProfit(sum);
+              
+              setPositions(newData);
+
+              
+              
+            });
+          });
+        };
+    
+        fetchData();
+      }, []);
+      const formatProfit = (num: number) => {
+         return parseFloat(num.toFixed(2));
+      };
+    
+      return (
+        <div className='m-3 mx-5'>
+        <Table columns={columns} dataSource={positions} />
+        <div className='mx-auto'>
+          <p>Total Profit : {formatProfit(profit)}</p>
+        </div>
+        </div>
+        );
 };
 
 export default Positions;
