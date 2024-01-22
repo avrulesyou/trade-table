@@ -78,8 +78,7 @@ const Positions: React.FC = () => {
                   const newPosition: Position = {
                     ...position,
                     close_price: socketData.bid,
-                    if(position.symbol.endsWith('USD'){
-                    profit: parseFloat(((socketData.bid - position.open_price) * position.volume * multiplier).toFixed(2)),}
+                    profit: parseFloat(((socketData.bid - position.open_price) * position.volume * multiplier).toFixed(2)),
                   };
                   return newPosition;
                 }
