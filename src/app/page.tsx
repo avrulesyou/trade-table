@@ -36,31 +36,27 @@ const getServerData = async (): Promise<Position[]> => {
 const Positions: React.FC = () => {
   //console.log(props)
   const [positions, setPositions] = useState<Position[]>([]);
-  const [profit, setProfit] = useState<number>(4.444);
+  const [profit, setProfit] = useState<number>(111);
   
   
   useEffect(() => {
    
         const fetchData = async () => {
-          let summ:number =0;
-          positions.forEach((position) => {
-            summ+=position.profit;
-          });
-          console.log("this is calculated sum " + summ );
-          setProfit(summ);
           const serverData: Position[] = await getServerData();
-          console.log("Hi This is API Data " + serverData)
+          console.log("Hi This is API Data " + JSON.stringify(serverData))
           let sum:number =0;
           serverData.forEach((data)=> {
             sum+=data.profit;
           });
+          const apiProfit:number = sum;
           setPositions(serverData);
-          setProfit(sum);
+          setProfit(apiProfit);
+          console.log("The API Profit is " + apiProfit)
 
           const socket = io('wss://quotes.equidity.io:3000');
           socket.emit('subscribe', 'feeds');
     
-          
+          let socketProfit:number = apiProfit;
           socket.on('message', (socketData: any) => {
             console.log("SocketData "+ JSON.stringify(socketData))
             
@@ -80,15 +76,18 @@ const Positions: React.FC = () => {
                     close_price: socketData.bid,
                     profit: parseFloat(((socketData.bid - position.open_price) * position.volume * multiplier).toFixed(2)),
                   };
+                  let diff = parseFloat((newPosition.profit-position.profit).toFixed(2));
+                  socketProfit = socketProfit+diff;
+                  const a =setProfit(socketProfit)
                   return newPosition;
                 }
                 return position;
               });
               
             };
-            
+            setProfit(socketProfit);
             setPositions((prevPositions) => updatePositions(prevPositions, socketData));
-            
+            setProfit(socketProfit);
             
             
           });
@@ -100,7 +99,7 @@ const Positions: React.FC = () => {
         };
     
         fetchData();
-      }, );
+      }, []);
       const formatProfit = (num: number) => {
          return parseFloat(num.toFixed(2));
       };
