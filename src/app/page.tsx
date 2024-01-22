@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import {Table} from 'antd';
 import { Position } from '@/types/position';
-import { Console } from 'console';
 
 
 
@@ -37,12 +36,18 @@ const getServerData = async (): Promise<Position[]> => {
 const Positions: React.FC = () => {
   //console.log(props)
   const [positions, setPositions] = useState<Position[]>([]);
-  const [profit, setProfit] = useState(4.44);
+  const [profit, setProfit] = useState<number>(111);
   
   
   useEffect(() => {
    
         const fetchData = async () => {
+          let summ:number =0;
+          positions.forEach((position) => {
+            summ+=position.profit;
+          });
+          console.log("this is calculated sum " + summ );
+          setProfit(summ);
           const serverData: Position[] = await getServerData();
           console.log("Hi This is API Data " + serverData)
           let sum:number =0;
@@ -58,49 +63,42 @@ const Positions: React.FC = () => {
           
           socket.on('message', (socketData: any) => {
             console.log("SocketData "+ JSON.stringify(socketData))
-            let sum = 0;
-            let closePrice = 0;
-            let openPrice = 0;
-            let profit = 0;
-            let lotSize = 0;
-            positions.forEach((position) => {
-              if(position.symbol == socketData.symbol){
-              closePrice = position.close_price;
-              openPrice = position.open_price;
-              lotSize = position.volume;
-              
-              if(position.symbol=="XAUUSD")
-                profit = ((closePrice-openPrice)*lotSize)*100;
-                else if(position.symbol.startsWith("EUR")||position.symbol.startsWith("AUD"))
-                profit = ((closePrice-openPrice)*lotSize)*9000;
-              else
-                profit = (closePrice-openPrice)*lotSize}
-
-              position.profit = profit;
-              sum += profit;
-            })
-
-            setProfit(sum);
             
             const updatePositions = (positions: Position[], socketData: any) => {
               return positions.map((position) => {
                 if (position.symbol === socketData.symbol) {
+                  let multiplier = 100;
+                          if (position.symbol.startsWith('EUR')) {
+                            multiplier = 100000;
+                          }else if (position.symbol.startsWith('AUD')) {
+                            multiplier = 100000;
+                          } else if (position.symbol.startsWith('BTC')) {
+                            multiplier = 1;
+                          }
                   const newPosition: Position = {
                     ...position,
                     close_price: socketData.bid,
-                    profit: (socketData.bid - position.open_price) * position.volume * 100,
+                    profit: parseFloat(((socketData.bid - position.open_price) * position.volume * multiplier).toFixed(2)),
                   };
+
+                  const a =setProfit(profit+(newPosition.profit-position.profit))
                   return newPosition;
                 }
                 return position;
               });
+              
             };
             
-            
             setPositions((prevPositions) => updatePositions(prevPositions, socketData));
-
+            
+            
             
           });
+            /*positions.forEach((position) => {
+              sum+=position.profit;
+            });
+            console.log("this is sum " + sum );
+            setProfit(sum);*/
         };
     
         fetchData();
