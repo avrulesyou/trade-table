@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import {Table} from 'antd';
 import { Position } from '@/types/position';
+import { Console } from 'console';
 
 
 
@@ -50,67 +51,60 @@ const Positions: React.FC = () => {
           });
           setPositions(serverData);
           setProfit(sum);
-          
+
           const socket = io('wss://quotes.equidity.io:3000');
           socket.emit('subscribe', 'feeds');
     
           
-          socket.on('feeds', (socketData: any) => {
-            
-            const positionsToUpdate = serverData.filter((position) => {
-              return socketData.some((socketDatum: any) => {
-                return socketDatum.symbol === position.symbol;
-              });
-            });
-    
-            
-            positionsToUpdate.forEach((position) => {
-              const updatedPosition = {
-                ...position,
-                price: socketData.find((socketDatum: any) => {
-                  return socketDatum.symbol === position.symbol;
-                }).price,
-              };
-    
+          socket.on('message', (socketData: any) => {
+            console.log("SocketData "+ JSON.stringify(socketData))
+            let sum = 0;
+            let closePrice = 0;
+            let openPrice = 0;
+            let profit = 0;
+            let lotSize = 0;
+            positions.forEach((position) => {
+              if(position.symbol == socketData.symbol){
+              closePrice = position.close_price;
+              openPrice = position.open_price;
+              lotSize = position.volume;
               
-              const positionIndex = serverData.findIndex((pos) => pos.key === position.key);
-    
-              
-              const newData = [...serverData];
-              newData[positionIndex] = updatedPosition;
-              let sum = 0;
-              let closePrice = 0;
-              let openPrice = 0;
-              let profit = 0;
-              let lotSize = 0;
-
-              positions.forEach((position) => {
-                closePrice = position.close_price;
-                openPrice = position.open_price;
-                lotSize = position.volume;
-                if(position.symbol.endsWith("USD"))
+              if(position.symbol=="XAUUSD")
                 profit = ((closePrice-openPrice)*lotSize)*100;
-                else if(position.symbol.endsWith("JPY"))
-                profit = ((closePrice-openPrice)*lotSize)*90;
-                else
-                profit = ((closePrice-openPrice)*lotSize)*80;
+                else if(position.symbol.startsWith("EUR")||position.symbol.startsWith("AUD"))
+                profit = ((closePrice-openPrice)*lotSize)*9000;
+              else
+                profit = (closePrice-openPrice)*lotSize}
 
-                position.profit = profit;
-                sum +=profit;
-              })
+              position.profit = profit;
+              sum += profit;
+            })
 
-              setProfit(sum);
-              
-              setPositions(newData);
+            setProfit(sum);
+            
+            const updatePositions = (positions: Position[], socketData: any) => {
+              return positions.map((position) => {
+                if (position.symbol === socketData.symbol) {
+                  const newPosition: Position = {
+                    ...position,
+                    close_price: socketData.bid,
+                    profit: (socketData.bid - position.open_price) * position.volume * 100,
+                  };
+                  return newPosition;
+                }
+                return position;
+              });
+            };
+            
+            
+            setPositions((prevPositions) => updatePositions(prevPositions, socketData));
 
-              
-              
-            });
+            
           });
         };
     
         fetchData();
-      }, );
+      }, []);
       const formatProfit = (num: number) => {
          return parseFloat(num.toFixed(2));
       };
