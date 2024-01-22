@@ -36,7 +36,7 @@ const getServerData = async (): Promise<Position[]> => {
 const Positions: React.FC = () => {
   //console.log(props)
   const [positions, setPositions] = useState<Position[]>([]);
-  const [profit, setProfit] = useState<number>(111);
+  const [profit, setProfit] = useState<number>(4.444);
   
   
   useEffect(() => {
@@ -78,10 +78,9 @@ const Positions: React.FC = () => {
                   const newPosition: Position = {
                     ...position,
                     close_price: socketData.bid,
-                    profit: parseFloat(((socketData.bid - position.open_price) * position.volume * multiplier).toFixed(2)),
+                    if(position.symbol.endsWith('USD'){
+                    profit: parseFloat(((socketData.bid - position.open_price) * position.volume * multiplier).toFixed(2)),}
                   };
-
-                  const a =setProfit(profit+(newPosition.profit-position.profit))
                   return newPosition;
                 }
                 return position;
@@ -102,7 +101,7 @@ const Positions: React.FC = () => {
         };
     
         fetchData();
-      }, []);
+      }, );
       const formatProfit = (num: number) => {
          return parseFloat(num.toFixed(2));
       };
